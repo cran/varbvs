@@ -81,11 +81,10 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
   # log-odds is specified separately for each variable. A default
   # setting is only available if the number of other hyperparameter
   # settings is 1, in which case we select 20 candidate settings for
-  # the prior log-odds, evenly spaced between log10(1/p) and
-  # log10(0.5).
+  # the prior log-odds, evenly spaced between log10(1/p) and -1.
   if (missing(logodds)) {
     if (length(sigma) == 1 & length(sa) == 1)
-      logodds <- seq(-log10(p),-0.3,length.out = 20)
+      logodds <- seq(-log10(p),-1,length.out = 20)
     else
       stop("logodds can only be missing when length(sigma) = length(sa) = 1")
   }
@@ -211,7 +210,7 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
   if (verbose) {
     cat("Welcome to           ")
     cat("--       *                              *               \n")
-    cat("VARBVS version 2.0.0 ")
+    cat("VARBVS version 2.0.3 ")
     cat("--       |              |               |               \n")
     cat("large-scale Bayesian ")
     cat("--       ||           | |    |          || |     |   |  \n")
@@ -219,7 +218,7 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
     cat("-- |     || | |    |  | ||  ||        |||| ||    |   || \n")
     cat("*********************")
     cat("*******************************************************\n")
-    cat("Copyright (C) 2012-2016 Peter Carbonetto.\n")
+    cat("Copyright (C) 2012-2017 Peter Carbonetto.\n")
     cat("See http://www.gnu.org/licenses/gpl.html for the full license.\n")
     cat("Fitting variational approximation for Bayesian variable",
         "selection model.\n")
@@ -410,6 +409,11 @@ outerloop <- function (X, Z, y, family, SZy, SZX, sigma, sa, logodds,
                       verbose,outer.iter,update.sigma,update.sa,n0,sa0)
     out$eta <- eta
 
+    # Adjust the variational lower bound to account for integral over
+    # the regression coefficients corresponding to the covariates.
+    out$logw <-
+      out$logw - determinant(crossprod(Z),logarithm = TRUE)$modulus/2
+    
     # Compute the posterior mean estimate of the regression
     # coefficients for the covariates under the current variational
     # approximation.
