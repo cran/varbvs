@@ -1,6 +1,9 @@
 useDynLib(varbvs,.registration = TRUE,.fixes = "C_")
 
 importFrom(methods,is)
+importFrom(Matrix,forceSymmetric)
+importFrom(Matrix,solve)
+importFrom(stats,pnorm)
 importFrom(stats,qnorm)
 importFrom(stats,quantile)
 importFrom(stats,runif)
@@ -16,8 +19,9 @@ importFrom(Rcpp,sourceCpp)
 export(logit,logpexp,logsigmoid,sigmoid,normalizelogweights,
        diagsq,diagsqt,cred,updatestats_varbvsbin,updatestats_varbvsbinz,
        update_eta,update_etaz,varbvs,varbvsnorm,varbvsbin,varbvsbinz,
-       varbvsnormupdate,varbvsbinupdate,varbvsbinzupdate,varbvscoefcred,
-       varbvsindep,varbvspve,varbvs,bayesfactor,rand,randn,var1,var1.cols)
+       varbvsmix,varbvsnormupdate,varbvsbinupdate,varbvsbinzupdate,
+       varbvsmixupdate,varbvscoefcred,varbvsindep,varbvspve,varbvs,
+       varbvsbf,bayesfactor,rand,randn,var1,var1.cols)
 
 S3method(summary,varbvs)
 S3method(predict,varbvs)

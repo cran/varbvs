@@ -220,9 +220,10 @@ library(varbvs)
 settings, the prior variance of the coefficients, and which trait to
 analyze. Set trait to &ldquo;edl&rdquo;, &ldquo;soleus&rdquo; or &ldquo;testis&rdquo;.</p>
 
-<pre><code class="r">trait   &lt;- &quot;testis&quot;
-logodds &lt;- seq(-5,-3,0.25)
-sa      &lt;- 0.05
+<pre><code class="r">trait      &lt;- &quot;testis&quot;
+covariates &lt;- &quot;sacwt&quot;
+logodds    &lt;- seq(-5,-3,0.25)
+sa         &lt;- 0.05
 </code></pre>
 
 <p>Set the random number generator seed.</p>
@@ -233,11 +234,6 @@ sa      &lt;- 0.05
 <h2>Load the genotype and phenotype data</h2>
 
 <pre><code class="r">load(&quot;cfw.RData&quot;)
-if (trait == &quot;edl&quot; | trait == &quot;soleus&quot;) {
-  covariates &lt;- c(&quot;batch16&quot;,&quot;tibia&quot;)
-} else if (trait == &quot;testis&quot;) {
-  covariates &lt;- &quot;sacwt&quot;
-}
 </code></pre>
 
 <p>Only analyze samples for which the phenotype and all the covariates
@@ -270,8 +266,7 @@ PIPs computed from the BVSR model in GEMMA.</p>
 <pre><code class="r">trellis.par.set(axis.text     = list(cex = 0.7),
                 par.ylab.text = list(cex = 0.7),
                 par.main.text = list(cex = 0.7,font = 1))
-w &lt;- c(normalizelogweights(fit$logw))
-j &lt;- which(fit$alpha %*% w &gt; 0.5)
+j &lt;- which(fit$pip &gt; 0.5)
 r &lt;- gwscan.gemma[[trait]]
 r[is.na(r)] &lt;- 0
 chromosomes   &lt;- levels(gwscan.bvsr$chr)
@@ -299,6 +294,14 @@ print(xyplot(p1 ~ plot.x,gwscan.bvsr,pch = 20,col = &quot;midnightblue&quot;,
                            y = list(limits = c(-0.1,1.2),at = c(0,0.5,1))),
              xlab = &quot;&quot;,ylab = &quot;probability&quot;,main = &quot;c. multi-marker (BVSR)&quot;),
       split = c(1,3,1,3),more = FALSE)
+</code></pre>
+
+<h2>Session information</h2>
+
+<p>This is the version of R and the packages that were used to generate
+these results.</p>
+
+<pre><code class="r">sessionInfo()
 </code></pre>
 
 </body>

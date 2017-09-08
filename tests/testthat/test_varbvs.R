@@ -1,3 +1,16 @@
+# Part of the varbvs package, https://github.com/pcarbo/varbvs
+#
+# Copyright (C) 2012-2017, Peter Carbonetto
+#
+# This program is free software: you can redistribute it under the
+# terms of the GNU General Public License; either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANY; without even the implied warranty of
+# MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
 context("varbvs")
 
 test_that("model fitting works for simulated data with a continuous outcome",{
@@ -76,3 +89,46 @@ test_that(paste("model fitting works for simulated data with a binary",
                check.attributes = FALSE)
 })
 
+test_that("model fitting works when crossprod(Z) is near-singular",{
+
+  # Load the data with a near-singular covariate matrix Z. To see that
+  # crossprod(Z) is near-singular, run this code:
+  #
+  #  R <- cor(Z)
+  #  v <- eigen(R)$values
+  #  print(v)
+  #
+  load("data.singular.cov.RData")
+  expect_silent(fit <- varbvs(X,Z,y,"gaussian",verbose = FALSE))
+})
+
+test_that(paste("model fitting works for linear regression with",
+                "mixture-of-normals priors in simulated data"),{
+  tol <- 0.05
+                    
+  # Run the R script that demonstrates varbvsmix on a simulated data
+  # set in which all the candidate variables are uncorrelated.
+  source("demo.mix.R")
+
+  # The variational lower bound should always be increasing.
+  expect_true(all(diff(fit$logZ) > 0))
+  
+  # Check the estimates of the model parameters against the
+  # settings used to simulate the data.
+  expect_equal(w,fit$w,tolerance = tol)
+  expect_equal(fit$sigma,se,tolerance = tol*se)
+})
+
+test_that("varbvs and varbvsmix produce same estimates when K=2",{
+  tol <- 1e-4
+  source("demo.test.mix.R")
+  rownames(fit$alpha) <- NULL
+  rownames(fit$mu)    <- NULL
+  
+  # Check that the varbvs and varbvsmix parameter estimates are the
+  # same.
+  niter <- length(fit$logZ)
+  expect_equal(fit$alpha[,2],c(fit2$alpha),tolerance = tol)
+  expect_equal(fit$mu[,2],c(fit2$mu),tolerance = tol)
+  expect_equal(fit$logZ[niter],fit2$logw,tolerance = tol)
+})

@@ -6,20 +6,16 @@ library(lattice)
 library(varbvs)
 
 ## ---- eval = TRUE--------------------------------------------------------
-trait   <- "testis"
-logodds <- seq(-5,-3,0.25)
-sa      <- 0.05
+trait      <- "testis"
+covariates <- "sacwt"
+logodds    <- seq(-5,-3,0.25)
+sa         <- 0.05
 
 ## ---- eval = TRUE--------------------------------------------------------
 set.seed(1)
 
 ## ------------------------------------------------------------------------
 #  load("cfw.RData")
-#  if (trait == "edl" | trait == "soleus") {
-#    covariates <- c("batch16","tibia")
-#  } else if (trait == "testis") {
-#    covariates <- "sacwt"
-#  }
 
 ## ------------------------------------------------------------------------
 #  rows <- which(apply(pheno[,c(trait,covariates)],1,
@@ -40,8 +36,7 @@ set.seed(1)
 #  trellis.par.set(axis.text     = list(cex = 0.7),
 #                  par.ylab.text = list(cex = 0.7),
 #                  par.main.text = list(cex = 0.7,font = 1))
-#  w <- c(normalizelogweights(fit$logw))
-#  j <- which(fit$alpha %*% w > 0.5)
+#  j <- which(fit$pip > 0.5)
 #  r <- gwscan.gemma[[trait]]
 #  r[is.na(r)] <- 0
 #  chromosomes   <- levels(gwscan.bvsr$chr)
@@ -69,4 +64,7 @@ set.seed(1)
 #                             y = list(limits = c(-0.1,1.2),at = c(0,0.5,1))),
 #               xlab = "",ylab = "probability",main = "c. multi-marker (BVSR)"),
 #        split = c(1,3,1,3),more = FALSE)
+
+## ------------------------------------------------------------------------
+#  sessionInfo()
 

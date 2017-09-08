@@ -12,12 +12,12 @@ set.seed(1)
 #  load("cd.RData")
 
 ## ------------------------------------------------------------------------
-#  r <- system.time(fit <- varbvs(X,NULL,y,"binomial",logodds = seq(-6,-3,0.25)))
+#  r <- system.time(fit <- varbvs(X,NULL,y,family = "binomial",
+#                                 logodds = seq(-6,-3,0.25),n0 = 0)
 #  cat(sprintf("Model fitting took %0.2f minutes.\n",r["elapsed"]/60))
 
 ## ------------------------------------------------------------------------
-#  w   <- c(normalizelogweights(fit$logw))
-#  pip <- c(varbvsindep(fit,X,NULL,y)$alpha %*% w)
+#  pip <- c(varbvsindep(fit,X,NULL,y)$alpha %*% fit$w)
 
 ## ------------------------------------------------------------------------
 #  save(list = c("fit","map","pip","r"),
@@ -27,7 +27,7 @@ set.seed(1)
 #  print(summary(fit,nv = 9))
 
 ## ---- fig.width = 9,fig.height = 4,fig.align = "center"------------------
-#  i <- which(fit$alpha %*% w > 0.5)
+#  i <- which(fit$pip > 0.5)
 #  var.labels <- paste0(round(map$pos[i]/1e6,digits = 2),"Mb")
 #  print(plot(fit,groups = map$chr,vars = i,var.labels = var.labels,gap = 7500,
 #             ylab = "posterior prob."),

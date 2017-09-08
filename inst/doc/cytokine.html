@@ -235,23 +235,25 @@ data(cytokine)
 variables (genetic markers) are, <em>a priori</em>, equally likely to be included
 in the model.</p>
 
-<pre><code class="r">fit.null &lt;- varbvs(X,NULL,y,&quot;binomial&quot;,logodds = -4)
+<pre><code class="r">fit.null &lt;- varbvs(X,NULL,y,&quot;binomial&quot;,logodds = -4,n0 = 0)
 </code></pre>
 
 <p>Next, compute the variational approximation given the assumption that
 genetic markers near cytokine signaling genes are more likely to be
-included in the model.</p>
+included in the model. For faster and more accurate computation of
+posterior probabilities, the variational parameters are initialized to
+the fitted values computed above with the exchangeable prior.</p>
 
 <pre><code class="r">logodds &lt;- matrix(-4,442001,13)
 logodds[cytokine == 1,] &lt;- matrix(-4 + seq(0,3,0.25),6711,13,byrow = TRUE)
-fit.cytokine &lt;- varbvs(X,NULL,y,&quot;binomial&quot;,logodds = logodds,
+fit.cytokine &lt;- varbvs(X,NULL,y,&quot;binomial&quot;,logodds = logodds,n0 = 0,
                        alpha = fit.null$alpha,mu = fit.null$mu,
                        eta = fit.null$eta,optimize.eta = TRUE)
 </code></pre>
 
 <p>Compute the Bayes factor.</p>
 
-<pre><code class="r">BF &lt;- bayesfactor(fit.null$logw,fit.cytokine$logw)
+<pre><code class="r">BF &lt;- varbvsbf(fit.null,fit.cytokine)
 </code></pre>
 
 <h2>Save the results to a file</h2>
@@ -265,8 +267,7 @@ fit.cytokine &lt;- varbvs(X,NULL,y,&quot;binomial&quot;,logodds = logodds,
 <p>Show two &ldquo;genome-wide scans&rdquo; from the multi-marker PIPs, with and
 without conditioning on enrichment of cytokine signaling genes.</p>
 
-<pre><code class="r">w &lt;- normalizelogweights(fit.cytokine$logw)
-i &lt;- which(fit.null$alpha &gt; 0.5 | fit.cytokine$alpha %*% w &gt; 0.5)
+<pre><code class="r">i &lt;- which(fit.null$pip &gt; 0.5 | fit.cytokine$pip &gt; 0.5)
 var.labels &lt;- paste0(round(map$pos[i]/1e6,digits = 2),&quot;Mb&quot;)
 print(plot(fit.null,groups = map$chr,vars = i,var.labels = NULL,
            gap = 7500,ylab = &quot;posterior prob.&quot;),

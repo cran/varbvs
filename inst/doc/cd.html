@@ -230,14 +230,14 @@ library(varbvs)
 distribution of the coefficients for a logistic regression model of a binary
 outcome (case-control status), with spike and slab priors on the coefficients.</p>
 
-<pre><code class="r">r &lt;- system.time(fit &lt;- varbvs(X,NULL,y,&quot;binomial&quot;,logodds = seq(-6,-3,0.25)))
+<pre><code class="r">r &lt;- system.time(fit &lt;- varbvs(X,NULL,y,family = &quot;binomial&quot;,
+                               logodds = seq(-6,-3,0.25),n0 = 0)
 cat(sprintf(&quot;Model fitting took %0.2f minutes.\n&quot;,r[&quot;elapsed&quot;]/60))
 </code></pre>
 
 <p>Compute &ldquo;single-marker&rdquo; posterior inclusion probabilities.</p>
 
-<pre><code class="r">w   &lt;- c(normalizelogweights(fit$logw))
-pip &lt;- c(varbvsindep(fit,X,NULL,y)$alpha %*% w)
+<pre><code class="r">pip &lt;- c(varbvsindep(fit,X,NULL,y)$alpha %*% fit$w)
 </code></pre>
 
 <h2>Save the results to a file</h2>
@@ -259,7 +259,7 @@ genome-wide &ldquo;Manhattan&rdquo; plot used to summarize the results of a
 genome-wide association study. Variables with <code>PIP &gt; 0.5</code> are
 highlighted.</p>
 
-<pre><code class="r">i &lt;- which(fit$alpha %*% w &gt; 0.5)
+<pre><code class="r">i &lt;- which(fit$pip &gt; 0.5)
 var.labels &lt;- paste0(round(map$pos[i]/1e6,digits = 2),&quot;Mb&quot;)
 print(plot(fit,groups = map$chr,vars = i,var.labels = var.labels,gap = 7500,
            ylab = &quot;posterior prob.&quot;),
