@@ -1,6 +1,6 @@
 # Part of the varbvs package, https://github.com/pcarbo/varbvs
 #
-# Copyright (C) 2012-2017, Peter Carbonetto
+# Copyright (C) 2012-2018, Peter Carbonetto
 #
 # This program is free software: you can redistribute it under the
 # terms of the GNU General Public License; either version 3 of the
@@ -12,12 +12,20 @@
 # General Public License for more details.
 #
 # Predict Y (outcome) given X (variables), Z (covariates) and objectted model.
-predict.varbvs <- function (object, X, Z = NULL, ...) {
+predict.varbvs <-
+  function (object, X, Z = NULL, type = c("link","response","class"),
+            averaged = TRUE, ...) {
   
   # Check that the first input is an instance of class "varbvs".
   if (!is(object,"varbvs"))
     stop("Input argument object must be an instance of class \"varbvs\".")
 
+  # Process and check input argument "type".
+  type <- match.arg(type)
+  if (object$family == "gaussian" & type != "link")
+    stop(paste("Prediction types \"response\" and \"class\" apply only to",
+               "logistic regression (family = \"binomial\")"))
+  
   # Get the number of samples (n), variables (p) and hyperparameter
   # settings (ns).
   n  <- nrow(X)
@@ -25,8 +33,9 @@ predict.varbvs <- function (object, X, Z = NULL, ...) {
   ns <- length(object$logw)
   
   # Check input X.
-  if (!(is.matrix(X) & is.double(X) & sum(is.na(X)) == 0))
-    stop("Input X must be a double-precision matrix with no missing values.")
+  if (!(is.matrix(X) & is.numeric(X) & sum(is.na(X)) == 0))
+    stop("Input X must be a numeric matrix with no missing values.")
+  storage.mode(X) <- "double"
 
   # Check input Z, and add an intercept.
   if (is.null(Z))
@@ -45,21 +54,40 @@ predict.varbvs <- function (object, X, Z = NULL, ...) {
 
   # Get the normalized (approximate) probabilities.
   w <- object$w
+
+  # Compute the estimates for each hyperparameter setting.
+  out <- with(object,varbvs.linear.predictors(X,Z,mu.cov,alpha,mu))
+  if (type == "response")
+    out <- sigmoid(out)
+  else if (type == "class")
+    out <- round(sigmoid(out))
   
-  # For each hyperparameter setting, and for each sample, compute the
-  # posterior mean estimate of Y, and then average these estimates
-  # over the hyperparameter settings. For the logistic regression, the
-  # final "averaged" estimate is obtained by collecting the "votes"
-  # from each hyperparameter setting, weighting the votes by the
-  # marginal probabilities, and outputing the estimate that wins by
+  # Average the estimates of Y over the hyperparameter settings, if
+  # requested. For the logistic regression, the final "averaged"
+  # prediction is obtained by collecting the "votes" from each
+  # hyperparameter setting, weighting the votes by the marginal
+  # probabilities, and outputing the estimate that wins by
   # majority. The averaged estimate is computed this way because the
   # estimates conditioned on each hyperparameter setting are not
   # necessarily calibrated in the same way.
-  Y <- with(object,Z %*% mu.cov + X %*% (alpha*mu))
-  if (object$family == "gaussian")
-    return(c(Y %*% w))
-  else if (object$family == "binomial")
-    return(round(c(round(sigmoid(Y)) %*% w)))
-  else
-    stop("Invalid setting for object$family")
+  if (averaged) {
+    if (type == "link")
+      out <- c(out %*% w)
+    else if (type == "response")
+      out <- c(out %*% w)
+    else
+      out <- c(round(out %*% w))
+  }
+  names(out) <- rownames(X)
+  return(out)
+}
+
+# ----------------------------------------------------------------------
+# For each hyperparameter setting, and for each sample, compute a
+# posterior mean estimate of Y. (For the logistic regression model, Y
+# contains the posterior probability that the binary outcome is 1.)
+varbvs.linear.predictors <- function (X, Z, mu.cov, alpha, mu) {
+  ns <- ncol(alpha)
+  Y  <- Z %*% mu.cov + X %*% (alpha*mu)
+  return(Y)
 }

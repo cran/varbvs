@@ -1,6 +1,6 @@
 # Part of the varbvs package, https://github.com/pcarbo/varbvs
 #
-# Copyright (C) 2012-2017, Peter Carbonetto
+# Copyright (C) 2012-2018, Peter Carbonetto
 #
 # This program is free software: you can redistribute it under the
 # terms of the GNU General Public License; either version 3 of the
@@ -50,10 +50,10 @@
 # the maximum a posteriori (MAP) estimate of the prior variance
 # parameter (sa), in which sa is drawn from a scaled inverse
 # chi-square distribution with scale sa0 and degrees of freedom n0.
-varbvsnorm <- function (X, y, sigma, sa, logodds, alpha, mu, tol = 1e-4,
-                        maxiter = 1e4, verbose = TRUE, outer.iter = NULL,
-                        update.sigma = TRUE, update.sa = TRUE, n0 = 10,
-                        sa0 = 1) {
+varbvsnorm <- function (X, y, sigma, sa, logodds, alpha, mu, update.order,
+                        tol = 1e-4, maxiter = 1e4, verbose = TRUE,
+                        outer.iter = NULL, update.sigma = TRUE,
+                        update.sa = TRUE, n0 = 10, sa0 = 1) {
 
   # Get the number of samples (n) and variables (p).
   n <- nrow(X)
@@ -84,7 +84,8 @@ varbvsnorm <- function (X, y, sigma, sa, logodds, alpha, mu, tol = 1e-4,
     mu0    <- mu
     s0     <- s
     sigma0 <- sigma
-
+    sa.old <- sa
+    
     # (2a) COMPUTE CURRENT VARIATIONAL LOWER BOUND
     # --------------------------------------------
     # Compute the lower bound to the marginal log-likelihood.
@@ -96,9 +97,9 @@ varbvsnorm <- function (X, y, sigma, sa, logodds, alpha, mu, tol = 1e-4,
     # -------------------------------------
     # Run a forward or backward pass of the coordinate ascent updates.
     if (iter %% 2)
-      i <- 1:p
+      i <- update.order
     else
-      i <- p:1
+      i <- rev(update.order)
     out   <- varbvsnormupdate(X,sigma,sa,logodds,xy,d,alpha,mu,Xr,i)
     alpha <- out$alpha
     mu    <- out$mu
@@ -150,14 +151,13 @@ varbvsnorm <- function (X, y, sigma, sa, logodds, alpha, mu, tol = 1e-4,
           paste(status,sprintf("%05d %+13.6e %0.1e %06.1f %0.1e %0.1e",
                                iter,logw[iter],err[iter],sum(alpha),
                                sigma,sa),sep="")
-      cat(progress.str)
-      cat(rep("\r",nchar(progress.str)))
+      cat(progress.str,"\n")
     }
     if (logw[iter] < logw0) {
       logw[iter] <- logw0
       err[iter]  <- 0
       sigma      <- sigma0
-      sa         <- sa0
+      sa         <- sa.old
       alpha      <- alpha0
       mu         <- mu0
       s          <- s0

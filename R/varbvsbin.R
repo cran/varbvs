@@ -1,6 +1,6 @@
-#  Part of the varbvs package, https://github.com/pcarbo/varbvs
+# Part of the varbvs package, https://github.com/pcarbo/varbvs
 #
-#  Copyright (C) 2012-2017, Peter Carbonetto
+# Copyright (C) 2012-2018, Peter Carbonetto
 #
 # This program is free software: you can redistribute it under the
 # terms of the GNU General Public License; either version 3 of the
@@ -47,10 +47,10 @@
 # the coefficient given that it is included in the model. Output eta
 # is the vector of free parameters that specify the variational
 # approximation to the likelihood factors in the logistic regression.
-varbvsbin <- function (X, y, sa, logodds, alpha, mu, eta, tol = 1e-4,
-                       maxiter = 1e4, verbose = TRUE, outer.iter = NULL,
-                       update.sa = TRUE, optimize.eta = TRUE,n0 = 10,
-                       sa0 = 1) {
+varbvsbin <- function (X, y, sa, logodds, alpha, mu, eta, update.order,
+                       tol = 1e-4, maxiter = 1e4, verbose = TRUE,
+                       outer.iter = NULL, update.sa = TRUE,
+                       optimize.eta = TRUE, n0 = 10, sa0 = 1) {
 
   # Get the number of samples (n) and variables (p).
   n <- nrow(X)
@@ -78,7 +78,7 @@ varbvsbin <- function (X, y, sa, logodds, alpha, mu, eta, tol = 1e-4,
     mu0    <- mu
     s0     <- s
     eta0   <- eta
-    sa0    <- sa
+    sa.old <- sa
 
     # (2a) COMPUTE CURRENT VARIATIONAL LOWER BOUND
     # --------------------------------------------
@@ -91,9 +91,9 @@ varbvsbin <- function (X, y, sa, logodds, alpha, mu, eta, tol = 1e-4,
     # -------------------------------------
     # Run a forward or backward pass of the coordinate ascent updates.
     if (iter %% 2)
-      i <- 1:p
+      i <- update.order
     else
-      i <- p:1
+      i <- rev(update.order)
     out   <- varbvsbinupdate(X,sa,logodds,stats,alpha,mu,Xr,i)
     alpha <- out$alpha
     mu    <- out$mu
@@ -144,13 +144,12 @@ varbvsbin <- function (X, y, sa, logodds, alpha, mu, eta, tol = 1e-4,
       progress.str <-
           paste(status,sprintf("%05d %+13.6e %0.1e %06.1f      NA %0.1e",
                                iter,logw[iter],err[iter],sum(alpha),sa),sep="")
-      cat(progress.str)
-      cat(rep("\r",nchar(progress.str)))
+      cat(progress.str,"\n")
     }
     if (logw[iter] < logw0) {
       logw[iter]  <- logw0
       err[iter]   <- 0
-      sa          <- sa0
+      sa          <- sa.old
       alpha       <- alpha0
       mu          <- mu0
       s           <- s0
@@ -244,6 +243,6 @@ int.logit <- function (y, stats, alpha, mu, s, Xr, eta) {
   # Compute the variational approximation to the expectation of the
   # log-likelihood with respect to the variational approximation.
   return(sum(logsigmoid(eta)) + dot(eta,d*eta - 1)/2 + log(a)/2 +
-         a*sum(y - 0.5)^2/2 + dot(yhat,Xr) - qnorm(Xr,d)^2/2 +
+         a*sum(y - 0.5)^2/2 + dot(yhat,Xr) - quadnorm(Xr,d)^2/2 +
          a*dot(d,Xr)^2/2 - dot(xdx,betavar(alpha,mu,s))/2)
 }

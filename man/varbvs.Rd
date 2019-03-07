@@ -11,10 +11,11 @@
   and the exact posterior.
 }
 \usage{
-  varbvs (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
-          logodds, alpha, mu, eta, update.sigma, update.sa,
-          optimize.eta, initialize.params, nr = 100, sa0 = 1, n0 = 10,
-          tol = 1e-4, maxiter = 1e4, verbose = TRUE)
+  varbvs(X, Z, y, family = c("gaussian","binomial"), sigma, sa,
+         logodds, weights, resid.vcov, alpha, mu, eta, update.sigma,
+         update.sa, optimize.eta, initialize.params, update.order,
+         nr = 100, sa0 = 1, n0 = 10, tol = 1e-4, maxiter = 1e4,
+         verbose = TRUE)
 }
 \arguments{
   \item{X}{n x p input matrix, where n is the number of samples,
@@ -66,16 +67,34 @@
     that a variable is included in the regression model. Note that we
     use the base-10 logarithm instead of the natural logarithm because
     it is usually more natural to specify prior log-odds settings in
-    this way. The prior log-odds may also be specified separately for
-    each variable, which is useful is there is prior information about
-    which variables are most relevant to the outcome. This is
-    accomplished by setting logodds to a p x ns matrix, where p is the
-    number of variables, and ns is the number of hyperparameter
-    settings. Note it is not possible to fit the logodds parameter; if
-    logodds input is not provided as input, then it is set to the
-    default value when sa and sigma are missing, and otherwise an error
-    is generated.}
+    this way. (To obtain the prior probability from the log-odds, use
+    the following formula: \eqn{q = 1/(1 + 10^(-logodds))}. The prior
+    log-odds may also be specified separately for each variable, which
+    is useful is there is prior information about which variables are
+    most relevant to the outcome. This is accomplished by setting
+    logodds to a p x ns matrix, where p is the number of variables, and
+    ns is the number of hyperparameter settings. Note it is not possible
+    to fit the logodds parameter; if logodds input is not provided as
+    input, then it is set to the default value when sa and sigma are
+    missing, and otherwise an error is generated.}
 
+  \item{weights}{Optional vector of weights for weighted linear
+    regression; larger weights correspond to smaller variances. It
+    should be \code{NULL}, or a numeric vector of the same length as
+    \code{y}. This is equivalent to the \code{weights} argument in
+    \code{\link[stats]{lm}}. This option is only available for linear
+    regression (\code{family = "gaussian"}), and cannot be combined with
+    \code{resid.vcov}.}
+
+  \item{resid.vcov}{Optional matrix specifying the covariance of the
+    residual, scaled by sigma. This is useful to allow for observations
+    with different variances (similar to \code{weights}), or for
+    observations that are not independent. It should either be
+    \code{NULL}, or a symmetric positive definite matrix in which the
+    number of rows and columns is equal to the length of \code{y}. This
+    option is only available for linear regression (\code{family =
+    "gaussian"}), and cannot be combined with \code{weights}.}
+  
   \item{alpha}{Good initial estimate for the variational parameter alpha
     for each hyperparameter setting. Either missing, or a p x ns matrix,
     where p is the number of variables, and ns is the number of
@@ -107,6 +126,11 @@
     variational inference algorithm (see below) will be skipped, which
     saves computation time for large data sets.}
 
+  \item{update.order}{Order of the co-ordinate ascent updates for
+    fitting the variational approximation. The default is
+    \code{update.order = 1:p}, where \code{p} is the number of variables
+    (the number of columns of \code{X}).}
+  
   \item{nr}{Number of samples of "model PVE" to draw from posterior.}
 
   \item{sa0}{Scale parameter for a scaled inverse chi-square prior on
@@ -249,7 +273,7 @@
   PVE), since it is often more natural to specify the PVE rather than
   the prior variance (see references below). This is technically only
   suitable or the linear regression model (\code{family = "gaussian"}),
-  but could potentially be used for the linear regression model in an
+  but could potentially be used for the logistic regression model in an
   approximate way.
 
   For example, one could approximate a uniform prior on the PVE by
@@ -264,13 +288,12 @@ sa <- PVE/(1-PVE)/(sigmoid(log(10)*logodds)*sx)}
   Also, bear in mind that if there are additional covariates (Z)
   included in the linear regression model that explain variance in Y,
   then it will usually make more sense to first remove the linear
-  effects of these covariates before performing this calculation. The
+  effects of these covariates before performing these calculations. The
   PVE would then represent the prior proportion of variance in the
-  residuals of Y that are explained by the candidate variables. For an
-  example of how to do this, see the code for function \code{varbvs}, in
-  file varbvs.R, under "preprocessing steps". Alternatively, one could
-  include the matrix Z in the calculation above, taking care to ensure
-  that the covariates are included in the model with probability 1.
+  residuals of Y that are explained by the candidate variables.
+  Alternatively, one could include the matrix Z in the calculations
+  above, taking care to ensure that the covariates are included in the
+  model with probability 1.
 }
 \section{Memory requirements}{
     Finally, we point out that the optimization procedures were
@@ -285,11 +308,9 @@ sa <- PVE/(1-PVE)/(sigmoid(log(10)*logodds)*sx)}
     \code{family = "gaussian"}, and none for \code{family = "binomial"}.
 }
 \value{
-    An object with S3 class \code{c("varbvs","list")}.
+  An object with S3 class \code{c("varbvs","list")}.
 
   \item{family}{Either "gaussian" or "binomial".}
-
-  \item{n}{Number of data samples used to fit model.}
 
   \item{sigma}{Settings for sigma (family = "gaussian" only).}
 
@@ -337,11 +358,29 @@ sa <- PVE/(1-PVE)/(sigmoid(log(10)*logodds)*sx)}
   \item{mu.cov}{Posterior mean regression coefficients for covariates,
     including intercept, for each hyperparameter setting.}
   
+  \item{beta.cov}{"Averaged" posterior mean regression coefficients for
+    covariates, including intercept.}
+  
   \item{eta}{Additional variational parameters for \code{family =
     "binomial"} only.}
   
   \item{optimize.eta}{If TRUE, eta was fit to data (\code{family =
-  "binomial"} only).}
+    "binomial"} only).}
+
+  \item{fitted.values}{Matrix containing the predicted (or "fitted")
+    values of the outcome at each hyperparameter setting. For the
+    logistic regression model (\code{family = "binomial"}), each matrix
+    entry gives the probability that the binary outcome is equal to 1.}
+
+  \item{residuals}{For linear regression, this is a matrix containing
+    the model residuals at each hyperparameter setting. For \code{family
+    = "binomial"}, this is a list with two matrices of the same size;
+    \code{residuals$deviance} contains the deviance residuals based on
+    the likelihood ratio chi-squared statistic;
+    \code{residuals$response} contains the "response" residuals simply
+    defined as the difference between the actual binary values (0 or 1)
+    and the fitted binomial probabilities (\emph{i.e.},
+    \code{fitted.values}).}
 
   \item{pve}{For each hyperparameter setting, and for each variable,
     mean estimate of the proportion of variance in outcome explained
@@ -351,7 +390,7 @@ sa <- PVE/(1-PVE)/(sigmoid(log(10)*logodds)*sx)}
   \item{model.pve}{Samples drawn from posterior distribution giving
   estimates of proportion of variance in outcome (y) explained by fitted
   variable selection model. This is for \code{family = "gaussian"}
-  only). To obtain the posterior mean estimate of the proportion of
+  only. To obtain the posterior mean estimate of the proportion of
   variance explained (PVE), for example, simply type
   \code{mean(fit$model.pve)}.}
 }
@@ -370,7 +409,7 @@ sa <- PVE/(1-PVE)/(sigmoid(log(10)*logodds)*sx)}
   e1003264.
 }
 \author{Peter Carbonetto \email{peter.carbonetto@gmail.com}}
-\seealso{\code{\link{summary.varbvs}}, \code{\link{varbvscoefcred}},
+\seealso{\code{\link{summary.varbvs}}, \link{varbvs.properties},
   \code{\link{varbvspve}}, \code{\link{varbvsnorm}},
   \code{\link{varbvsbin}}, \code{\link{varbvsbinz}},
   \code{\link{normalizelogweights}}, \link{varbvs-internal}
@@ -426,6 +465,8 @@ beta <- c(0.5*rnorm(10),rep(0,90))
 
 # Simulate the binary trait (case-control status) as a coin toss with
 # success rates given by the logistic regression.
+sigmoid <- function (x)
+  1/(1 + exp(-x))
 y <- as.double(runif(750) < sigmoid(-1 + Z \%*\% u + X \%*\% beta))
 
 # Fit the variable selection model.

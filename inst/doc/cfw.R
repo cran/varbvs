@@ -2,6 +2,7 @@
 knitr::opts_chunk$set(eval = FALSE,collapse = TRUE,comment = "#")
 
 ## ---- eval = TRUE, message = FALSE---------------------------------------
+library(curl)
 library(lattice)
 library(varbvs)
 
@@ -15,7 +16,7 @@ sa         <- 0.05
 set.seed(1)
 
 ## ------------------------------------------------------------------------
-#  load("cfw.RData")
+#  load(curl("https://zenodo.org/record/546142/files/cfw.RData"))
 
 ## ------------------------------------------------------------------------
 #  rows <- which(apply(pheno[,c(trait,covariates)],1,

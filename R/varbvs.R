@@ -1,6 +1,6 @@
 # Part of the varbvs package, https://github.com/pcarbo/varbvs
 #
-# Copyright (C) 2012-2017, Peter Carbonetto
+# Copyright (C) 2012-2018, Peter Carbonetto
 #
 # This program is free software: you can redistribute it under the
 # terms of the GNU General Public License; either version 3 of the
@@ -15,9 +15,10 @@
 # variable selection in linear (family = "gaussian") or logistic
 # regression (family = "binomial"). See varbvs.Rd for details.
 varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
-                    logodds, alpha, mu, eta, update.sigma, update.sa,
-                    optimize.eta, initialize.params, nr = 100, sa0 = 1,
-                    n0 = 10, tol = 1e-4, maxiter = 1e4, verbose = TRUE) {
+                    logodds, weights, resid.vcov, alpha, mu, eta, 
+                    update.sigma, update.sa, optimize.eta, initialize.params,
+                    update.order, nr = 100, sa0 = 1, n0 = 10, tol = 1e-4,
+                    maxiter = 1e4, verbose = TRUE) {
 
   # Get the number of samples (n) and variables (p).
   n <- nrow(X)
@@ -26,13 +27,10 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
   # (1) CHECK INPUTS
   # ----------------
   # Check input X.
-  if (!(is.matrix(X) & is.double(X) & sum(is.na(X)) == 0))
-    stop("Input X must be a double-precision matrix with no missing values.")
-  
-  # Add column names to X if they are not provided.
-  if (is.null(colnames(X)))
-    colnames(X) <- paste0("X",1:p)
-  
+  if (!(is.matrix(X) & is.numeric(X) & sum(is.na(X)) == 0))
+    stop("Input X must be a numeric matrix with no missing values.")
+  storage.mode(X) <- "double"
+
   # Check input Z.
   if (!is.null(Z)) {
     Z <- as.matrix(Z)
@@ -55,7 +53,7 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
   if (length(y) != n)
     stop("Inputs X and y do not match")
   y <- c(as.double(y))
-  
+
   # Get choice of regression model.
   family <- match.arg(family)
 
@@ -131,6 +129,31 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
   # coefficients.
   if (missing(update.sa))
     update.sa <- update.sa.default
+
+  # Set the weights---used to indicate that different observations
+  # have different variances---or the covariance matrix of the
+  # residual (resid.vcov). Note that only one of the weights and
+  # residual covariance matrix can be non-NULL.
+  if (missing(weights))
+    weights <- NULL
+  if (missing(resid.vcov))
+    resid.vcov <- NULL
+  if (!(is.null(weights) & is.null(resid.vcov)) & family != "gaussian")
+    stop(paste("Specifying weights or resid.vcov is only allowed for",
+               "family == \"gaussian\""))
+  if (!is.null(weights) & !is.null(resid.vcov))
+    stop("Only one of weights and resid.vcov may be specified")
+  if (!is.null(weights))
+    if (!(is.vector(weights) & length(weights) == n))
+      stop("Input weights should be a vector with the same length as y")
+  if (!is.null(resid.vcov)) 
+    if (is.matrix(resid.vcov) | inherits(resid.vcov,"Matrix")) {
+      if (!(nrow(resid.vcov) == n & ncol(resid.vcov) == n &
+            all(resid.vcov == t(resid.vcov))))
+        stop(paste("Input resid.vcov should be an n x n symmetric",
+                   "matrix where n = length(y)"))
+    } else
+      stop("Input resid.vcov should be class \"matrix\" or \"Matrix\"")
   
   # Set initial estimates of variational parameter alpha.
   initialize.params.default <- TRUE
@@ -186,30 +209,18 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
   if (missing(optimize.eta))
     optimize.eta <- optimize.eta.default
 
-  # (3) PREPROCESSING STEPS
-  # -----------------------
-  if (family == "gaussian") {
-
-    # Adjust the genotypes and phenotypes so that the linear effects of
-    # the covariates are removed. This is equivalent to integrating out
-    # the regression coefficients corresponding to the covariates with
-    # respect to an improper, uniform prior.
-    out <- remove.covariate.effects(X,Z,y)
-    X   <- out$X
-    y   <- out$y
-    SZy <- out$SZy
-    SZX <- out$SZX
-    rm(out)
-  } else {
-    SZy <- NULL
-    SZX <- NULL
-  }
-
+  # Determine the order of the co-ordinate ascent updates.
+  if (missing(update.order))
+    update.order <- 1:p
+  if (!all(sort(intersect(update.order,1:p)) == 1:p))
+    stop(paste("Argument \"update.order\" should be a vector in which each",
+               "variable index (column of X) is included at least once"))
+  
   # Provide a brief summary of the analysis.
   if (verbose) {
     cat("Welcome to           ")
     cat("--       *                              *               \n")
-    cat("VARBVS version 2.4-0 ")
+    cat("VARBVS version 2.5-16")
     cat("--       |              |               |               \n")
     cat("large-scale Bayesian ")
     cat("--       ||           | |    |          || |     |   |  \n")
@@ -217,7 +228,7 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
     cat("-- |     || | |    |  | ||  ||        |||| ||    |   || \n")
     cat("*********************")
     cat("*******************************************************\n")
-    cat("Copyright (C) 2012-2017 Peter Carbonetto.\n")
+    cat("Copyright (C) 2012-2019 Peter Carbonetto.\n")
     cat("See http://www.gnu.org/licenses/gpl.html for the full license.\n")
     cat("Fitting variational approximation for Bayesian variable",
         "selection model.\n")
@@ -236,6 +247,64 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
       cat("fit approx. factors (eta):   ",tf2yn(optimize.eta),"\n")
   }
 
+  # (3) PREPROCESSING STEPS
+  # -----------------------
+  if (family == "gaussian") {
+    if (!is.null(weights)) {
+
+      # Adjust the inputs X and y to account for the weights.
+      #
+      # Note that this is equivalent to setting to the residual
+      # variance-covariance matrix to
+      #
+      #   resid.vcov <- diag(1/weights)
+      #
+      X <- sqrt(weights) * X
+      Z <- sqrt(weights) * Z
+      y <- sqrt(weights) * y
+    } else if (!is.null(resid.vcov)) {
+
+      # Adjust the inputs X and y to account for the variance-covariance
+      # matrix of the residuals.
+      if (verbose)
+        cat("Adjusting inputs for residual variance-covariance matrix.\n")
+      L <- tryCatch(t(chol(resid.vcov)),error = function(e) NULL)
+      if (is.null(L))
+        stop("Input resid.vcov is not a positive definite matrix")
+      else {
+        X <- forwardsolve(L,X)
+        Z <- forwardsolve(L,Z)
+        y <- forwardsolve(L,y)
+      }
+    }
+    
+    # Adjust the inputs X and y so that the linear effects of the
+    # covariates (Z) are removed. This is equivalent to integrating
+    # out the regression coefficients corresponding to the covariates
+    # with respect to an improper, uniform prior.
+    out <- remove.covariate.effects(X,Z,y)
+    X   <- out$X
+    y   <- out$y
+    SZy <- out$SZy
+    SZX <- out$SZX
+    rm(out)
+  } else {
+    SZy <- NULL
+    SZX <- NULL
+  }
+
+  # Add row and column names to X if they are not provided.
+  if (is.null(rownames(X)))
+    rownames(X) <- 1:n
+  if (is.null(colnames(X)))
+    colnames(X) <- paste0("X",1:p)
+
+  # Add column names to Z if they are not already provided.
+  if (is.null(colnames(Z)) & ncol(Z) > 1)
+    colnames(Z) <- c("(Intercept)",paste0("Z",1:(ncol(Z) - 1)))
+  else
+    colnames(Z)[1] <- "(Intercept)"
+  
   # (4) INITIALIZE STORAGE FOR THE OUTPUTS
   # --------------------------------------
   # Initialize storage for the variational estimate of the marginal
@@ -258,9 +327,10 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
       cat("        variational    max.   incl variance params\n")
       cat(" iter   lower bound  change   vars   sigma      sa\n")
     }
-    out      <- outerloop(X,Z,y,family,SZy,SZX,c(sigma),c(sa),c(logodds),
-                          c(alpha),c(mu),c(eta),tol,maxiter,verbose,NULL,
-                          update.sigma,update.sa,optimize.eta,n0,sa0)
+    out      <- outerloop(X,Z,y,family,weights,resid.vcov,SZy,SZX,c(sigma),
+                          c(sa),c(logodds),c(alpha),c(mu),c(eta),update.order,
+                          tol,maxiter,verbose,NULL,update.sigma,update.sa,
+                          optimize.eta,n0,sa0)
     logw     <- out$logw
     sigma    <- out$sigma
     sa       <- out$sa
@@ -286,9 +356,10 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
 
       # Repeat for each setting of the hyperparameters.
       for (i in 1:ns) {
-        out <- outerloop(X,Z,y,family,SZy,SZX,sigma[i],sa[i],logodds[,i],
-                         alpha[,i],mu[,i],eta[,i],tol,maxiter,verbose,i,
-                         update.sigma,update.sa,optimize.eta,n0,sa0)
+        out <- outerloop(X,Z,y,family,weights,resid.vcov,SZy,SZX,sigma[i],
+                         sa[i],logodds[,i],alpha[,i],mu[,i],eta[,i],
+                         update.order,tol,maxiter,verbose,i,update.sigma,
+                         update.sa,optimize.eta,n0,sa0)
         logw[i]    <- out$logw
         sigma[i]   <- out$sigma
         sa[i]      <- out$sa
@@ -298,8 +369,6 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
         s[,i]      <- out$s
         eta[,i]    <- out$eta
       }
-      if (verbose)
-        cat("\n")
 
       # Choose an initialization common to all the runs of the
       # coordinate ascent algorithm. This is chosen from the
@@ -329,9 +398,10 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
     # parameters that locally minimize the K-L divergence between the
     # approximating distribution and the exact posterior.
     for (i in 1:ns) {
-      out <- outerloop(X,Z,y,family,SZy,SZX,sigma[i],sa[i],logodds[,i],
-                       alpha[,i],mu[,i],eta[,i],tol,maxiter,verbose,i,
-                       update.sigma,update.sa,optimize.eta,n0,sa0)
+      out <- outerloop(X,Z,y,family,weights,resid.vcov,SZy,SZX,sigma[i],sa[i],
+                       logodds[,i],alpha[,i],mu[,i],eta[,i],update.order,tol,
+                       maxiter,verbose,i,update.sigma,update.sa,optimize.eta,
+                       n0,sa0)
       logw[i]    <- out$logw
       sigma[i]   <- out$sigma
       sa[i]      <- out$sa
@@ -341,75 +411,127 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
       s[,i]      <- out$s
       eta[,i]    <- out$eta
     }
-    if (verbose)
-      cat("\n")
   }
-    
+
   # (6) CREATE FINAL OUTPUT
   # -----------------------
   # Compute the normalized importance weights and the posterior
   # inclusion probabilities (PIPs) and mean regression coefficients
   # averaged over the hyperparameter settings.
   if (ns == 1) {
-    w    <- 1
-    pip  <- fit$alpha
-    beta <- fit$mu
+    w        <- 1
+    pip      <- c(alpha)
+    beta     <- c(alpha*mu)
+    beta.cov <- c(mu.cov)
   } else {
-    w    <- normalizelogweights(logw)
-    pip  <- c(alpha %*% w)
-    beta <- c(mu %*% w)
+    w        <- normalizelogweights(logw)
+    pip      <- c(alpha %*% w)
+    beta     <- c((alpha*mu) %*% w)
+    beta.cov <- c(mu.cov %*% w)
   }
 
   if (family == "gaussian") {
-    fit <- list(family = family,n = n,n0 = n0,sa0 = sa0,mu.cov = mu.cov,
+    fit <- list(family = family,n0 = n0,sa0 = sa0,mu.cov = mu.cov,
                 update.sigma = update.sigma,update.sa = update.sa,
                 prior.same = prior.same,optimize.eta = FALSE,logw = logw,
                 w = w,sigma = sigma,sa = sa,logodds = logodds,alpha = alpha,
-                mu = mu,s = s,eta = NULL,pip = pip,beta = beta)
+                mu = mu,s = s,eta = NULL,pip = pip,beta = beta,
+                beta.cov = beta.cov,y = y)
     class(fit) <- c("varbvs","list")
 
-    # Compute the proportion of variance in Y, after removing linear
-    # effects of covariates, explained by the regression model.
-    if (verbose)
-      cat("Estimating proportion of variance in Y explained by model.\n");
-    fit$model.pve <- varbvspve(X,fit,nr)
+    if (is.null(weights) & is.null(resid.vcov) & ncol(Z) == 1) {
+        
+      # Compute the proportion of variance in Y---only in the
+      # unweighted, i.i.d. case when there are no additional covariates
+      # included in the model.
+      if (verbose)
+        cat("Estimating proportion of variance in Y explained by model.\n");
+      fit$model.pve <- varbvspve(fit,X,nr)
 
-    # Compute the proportion of variance in Y, after removing linear
-    # effects of covariates, explained by each variable.
-    fit$pve           <- matrix(0,p,ns)
-    rownames(fit$pve) <- colnames(X)
-    sx                <- var1.cols(X)
-    for (i in 1:ns) 
-      fit$pve[,i] <- sx*(mu[,i]^2 + s[,i])/var1(y)
+      # Compute the proportion of variance in Y explained by each
+      # variable. This can only be estimated in the i.i.d. case when
+      # there are no additional covariates included in the model.
+      fit$pve           <- matrix(0,p,ns)
+      rownames(fit$pve) <- colnames(X)
+      sx                <- var1.cols(X)
+      for (i in 1:ns) 
+        fit$pve[,i] <- sx*(mu[,i]^2 + s[,i])/var1(y)
+    } else {
+      fit$model.pve <- NULL
+      fit$pve       <- NULL
+    }
+
+    # Restore the inputted X and y.
+    X <- X + Z %*% SZX
+    y <- y + c(Z %*% SZy)
+  
+    # Compute the fitted values for each hyperparameter setting.
+    fit$fitted.values <- varbvs.linear.predictors(X,Z,mu.cov,alpha,mu)
+
+    # Compute the residuals for each hyperparameter setting.
+    fit$residuals <- y - fit$fitted.values
+    fit$residuals.response
   } else if (family == "binomial") {
-    fit <- list(family = family,n = n,n0 = n0,mu.cov = mu.cov,sa0 = sa0,
+    fit <- list(family = family,n0 = n0,mu.cov = mu.cov,sa0 = sa0,
                 update.sigma = FALSE,update.sa = update.sa,
                 optimize.eta = optimize.eta,prior.same = prior.same,
                 logw = logw,w = w,sigma = NULL,sa = sa,logodds = logodds,
                 alpha = alpha,mu = mu,s = s,eta = eta,pip = pip,beta = beta,
-                model.pve = NA)
+                beta.cov = beta.cov,pve = NULL,model.pve = NULL)
     class(fit) <- c("varbvs","list")
+
+    # Compute the fitted values for each hyperparameter setting.
+    fit$fitted.values <-
+      sigmoid(varbvs.linear.predictors(X,Z,mu.cov,alpha,mu))
+    
+    # Compute the "deviance" and "response" residuals for
+    # hyperparameter setting.
+    fit$residuals <-
+      list(deviance = resid.dev.logistic(matrix(y,n,ns),fit$fitted.values),
+           response = y - fit$fitted.values)
   }
   
   # Add names to some of the outputs.
-  rownames(fit$alpha) <- colnames(X)
-  rownames(fit$mu)    <- colnames(X)
-  rownames(fit$s)     <- colnames(X)
-  names(fit$beta)     <- colnames(X)
-  names(fit$pip)      <- colnames(X)
+  hyper.labels                <- paste("theta",1:ns,sep = "_")
+  rownames(fit$alpha)         <- colnames(X)
+  rownames(fit$mu)            <- colnames(X)
+  rownames(fit$s)             <- colnames(X)
+  names(fit$beta)             <- colnames(X)
+  names(fit$pip)              <- colnames(X)
+  rownames(fit$mu.cov)        <- colnames(Z)
+  names(fit$beta.cov)         <- colnames(Z)
+  rownames(fit$fitted.values) <- rownames(X)
+  colnames(fit$mu.cov)        <- hyper.labels
+  colnames(fit$alpha)         <- hyper.labels
+  colnames(fit$mu)            <- hyper.labels
+  colnames(fit$s)             <- hyper.labels
+  colnames(fit$fitted.values) <- hyper.labels
+  if (family == "gaussian") {
+    rownames(fit$residuals) <- rownames(X)
+    colnames(fit$residuals) <- hyper.labels
+  } else {
+    rownames(fit$eta)                <- rownames(X)
+    colnames(fit$eta)                <- hyper.labels
+    rownames(fit$residuals$deviance) <- rownames(X)
+    rownames(fit$residuals$response) <- rownames(X)
+    colnames(fit$residuals$deviance) <- hyper.labels
+    colnames(fit$residuals$response) <- hyper.labels
+  }
   if (prior.same)
     fit$logodds <- c(fit$logodds)
   else
     rownames(fit$logodds) <- colnames(X)
-
+  if (!is.null(fit$pve))
+    colnames(fit$pve) <- hyper.labels
   return(fit)
 }
 
 # ----------------------------------------------------------------------
 # This function implements one iteration of the "outer loop".
-outerloop <- function (X, Z, y, family, SZy, SZX, sigma, sa, logodds,
-                       alpha, mu, eta, tol, maxiter, verbose, outer.iter,
-                       update.sigma, update.sa, optimize.eta, n0, sa0) {
+outerloop <- function (X, Z, y, family, weights, resid.vcov, SZy, SZX, sigma,
+                       sa, logodds, alpha, mu, eta, update.order, tol, maxiter,
+                       verbose, outer.iter, update.sigma, update.sa,
+                       optimize.eta, n0, sa0) {
   p <- ncol(X)
   if (length(logodds) == 1)
     logodds <- rep(logodds,p)
@@ -421,14 +543,25 @@ outerloop <- function (X, Z, y, family, SZy, SZX, sigma, sa, logodds,
 
     # Optimize the variational lower bound for the Bayesian variable
     # selection model.
-    out <- varbvsnorm(X,y,sigma,sa,log(10)*logodds,alpha,mu,tol,maxiter,
-                      verbose,outer.iter,update.sigma,update.sa,n0,sa0)
+    out <- varbvsnorm(X,y,sigma,sa,log(10)*logodds,alpha,mu,update.order,
+                      tol,maxiter,verbose,outer.iter,update.sigma,update.sa,
+                      n0,sa0)
     out$eta <- eta
 
+    # If weights are provided, adjust the variational lower bound to
+    # account for the differences in variance of the samples.
+    if (!is.null(weights))
+      out$logw <- out$logw + sum(log(weights))/2
+    
+    # If a covariance matrix is provided for the residuals, adjust the
+    # variational lower bound to account for a non-identity covariance
+    # matrix.
+    if (!is.null(resid.vcov))
+      out$logw <- out$logw - determinant(resid.vcov,logarithm = TRUE)$modulus/2
+        
     # Adjust the variational lower bound to account for integral over
     # the regression coefficients corresponding to the covariates.
-    out$logw <-
-      out$logw - determinant(crossprod(Z),logarithm = TRUE)$modulus/2
+    out$logw <- out$logw - determinant(crossprod(Z),logarithm = TRUE)$modulus/2
     
     # Compute the posterior mean estimate of the regression
     # coefficients for the covariates under the current variational
@@ -439,11 +572,13 @@ outerloop <- function (X, Z, y, family, SZy, SZX, sigma, sa, logodds,
     # Optimize the variational lower bound for the Bayesian variable
     # selection model.
     if (ncol(Z) == 1)
-      out <- varbvsbin(X,y,sa,log(10)*logodds,alpha,mu,eta,tol,maxiter,
-                       verbose,outer.iter,update.sa,optimize.eta,n0,sa0)
+      out <- varbvsbin(X,y,sa,log(10)*logodds,alpha,mu,eta,update.order,tol,
+                       maxiter,verbose,outer.iter,update.sa,optimize.eta,
+                       n0,sa0)
     else
-      out <- varbvsbinz(X,Z,y,sa,log(10)*logodds,alpha,mu,eta,tol,maxiter,
-                        verbose,outer.iter,update.sa,optimize.eta,n0,sa0)
+      out <- varbvsbinz(X,Z,y,sa,log(10)*logodds,alpha,mu,eta,update.order,
+                        tol,maxiter,verbose,outer.iter,update.sa,optimize.eta,
+                        n0,sa0)
     out$sigma <- sigma
 
     # Compute the posterior mean estimate of the regression

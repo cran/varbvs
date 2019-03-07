@@ -1,6 +1,6 @@
 # Part of the varbvs package, https://github.com/pcarbo/varbvs
 #
-# Copyright (C) 2012-2017, Peter Carbonetto
+# Copyright (C) 2012-2018, Peter Carbonetto
 #
 # This program is free software: you can redistribute it under the
 # terms of the GNU General Public License; either version 3 of the
@@ -25,8 +25,9 @@ varbvsindep <- function (fit, X, Z, y) {
   ns <- length(fit$logw)
 
   # Check input X.
-  if (!(is.matrix(X) & is.double(X) & sum(is.na(X)) == 0))
-    stop("Input X must be a double-precision matrix with no missing values.")
+  if (!(is.matrix(X) & is.numeric(X) & sum(is.na(X)) == 0))
+    stop("Input X must be a numeric matrix with no missing values.")
+  storage.mode(X) <- "double"
   if (nrow(fit$alpha) != p)
     stop("Inputs X and fit are not compatible.")
 
@@ -63,7 +64,7 @@ varbvsindep <- function (fit, X, Z, y) {
   # Selection," 2001.
   if (fit$family == "gaussian") {
     if (ncol(Z) == 1) {
-      X <- X - rep.row(colMeans(X),n)
+      X <- scale(X,center = TRUE,scale = FALSE)
       y <- y - mean(y)
     } else {
 
@@ -84,7 +85,10 @@ varbvsindep <- function (fit, X, Z, y) {
   alpha <- matrix(0,p,ns)
   mu    <- matrix(0,p,ns)
   s     <- matrix(0,p,ns)
-
+  dimnames(alpha) <- dimnames(fit$alpha)
+  dimnames(mu)    <- dimnames(fit$mu)
+  dimnames(s)     <- dimnames(fit$s)
+  
   # Calculate the mean (mu) and variance (s) of the coefficients given that
   # the coefficients are included in the model, and the posterior inclusion
   # probabilities (alpha), ignoring correlations between variables. Repeat

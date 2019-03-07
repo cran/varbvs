@@ -1,6 +1,6 @@
 # Part of the varbvs package, https://github.com/pcarbo/varbvs
 #
-# Copyright (C) 2012-2017, Peter Carbonetto
+# Copyright (C) 2012-2018, Peter Carbonetto
 #
 # This program is free software: you can redistribute it under the
 # terms of the GNU General Public License; either version 3 of the
@@ -15,7 +15,7 @@
 # explained by the Bayesian variable selection model fitted using a
 # variational approximation. This function is only valid for the
 # linear regression model (family = "gaussian") with an intercept.
-varbvspve <- function (X, fit, nr = 1000) {
+varbvspve <- function (fit, X, nr = 1000) {
 
   # Get the number of variables (p) and the number of hyperparameter
   # settings (ns).
@@ -32,7 +32,7 @@ varbvspve <- function (X, fit, nr = 1000) {
   if (!is(fit,"varbvs"))
     stop("Input argument \"fit\" must be an instance of class \"varbvs\".")
   if (fit$family != "gaussian")
-    stop("varbvspve is only implemented for family = \"gaussian\"")
+    stop("varbvspve is only implemented for family = \"gaussian\".")
   
   # Initialize storage for posterior estimates of the proportion of
   # variance explained.

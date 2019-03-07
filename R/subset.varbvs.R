@@ -1,6 +1,6 @@
 # Part of the varbvs package, https://github.com/pcarbo/varbvs
 #
-# Copyright (C) 2012-2017, Peter Carbonetto
+# Copyright (C) 2012-2018, Peter Carbonetto
 #
 # This program is free software: you can redistribute it under the
 # terms of the GNU General Public License; either version 3 of the
@@ -38,10 +38,13 @@ subset.varbvs <- function (x, subset, ...) {
   out$alpha   <- as.matrix(out$alpha[,i])
   out$mu      <- as.matrix(out$mu[,i])
   out$s       <- as.matrix(out$s[,i])
-  if (out$family == "gaussian") {
+  out$fitted.values <- as.matrix(out$fitted.values)
+  out$residuals     <- as.matrix(out$residuals)
+  if (!is.null(out$pve))
+    out$pve <- as.matrix(out$pve[,i])
+  if (out$family == "gaussian")
     out$sigma <- out$sigma[i]
-    out$pve   <- as.matrix(out$pve[,i])
-  } else if (out$family == "binomial")
-    out$eta <- out$eva[,i]
+  else if (out$family == "binomial")
+    out$eta <- out$eta[,i]
   return(out)
 }

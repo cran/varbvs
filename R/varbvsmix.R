@@ -1,6 +1,6 @@
 # Part of the varbvs package, https://github.com/pcarbo/varbvs
 #
-# Copyright (C) 2012-2017, Peter Carbonetto
+# Copyright (C) 2012-2018, Peter Carbonetto
 #
 # This program is free software: you can redistribute it under the
 # terms of the GNU General Public License; either version 3 of the
@@ -26,8 +26,9 @@ varbvsmix <- function (X, Z, y, sa, sigma, w, alpha, mu, update.sigma,
   # (1) CHECK INPUTS
   # ----------------
   # Check input X.
-  if (!(is.matrix(X) & is.double(X) & sum(is.na(X)) == 0))
-    stop("Input X must be a double-precision matrix with no missing values.")
+  if (!(is.matrix(X) & is.numeric(X) & sum(is.na(X)) == 0))
+    stop("Input X must be a numeric matrix with no missing values.")
+  storage.mode(X) <- "double"
 
   # Add column names to X if they are not provided.
   if (is.null(colnames(X)))
@@ -275,8 +276,7 @@ varbvsmix <- function (X, Z, y, sa, sigma, w, alpha, mu, update.sigma,
                 iter,logZ[iter],err[iter],sigma,
                 sprintf("[%0.1g,%0.1g]",sqrt(min(sa[-1])),sqrt(max(sa))),
                 min(w),max(w),nzw[iter])
-      cat(progress.str)
-      cat(rep("\r",nchar(progress.str)))
+      cat(progress.str,"\n")
     }
     if (logZ[iter] < logZ0) {
       logZ[iter] <- logZ0
@@ -403,7 +403,7 @@ computelfsrmix <- function (alpha, mu, s) {
   k <- ncol(alpha)
 
   # For each variable, get the posterior probability that the
-  # regression coeffiicient is exactly zero.
+  # regression coefficient is exactly zero.
   p0 <- alpha[,1]
 
   # For each variable, get the posterior probability that the

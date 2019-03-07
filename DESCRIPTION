@@ -1,14 +1,15 @@
 Package: varbvs
 Encoding: UTF-8
 Type: Package
-Version: 2.4-0
-Date: 2017-09-08
+Version: 2.5-16
+Date: 2019-03-07
 Title: Large-Scale Bayesian Variable Selection Using Variational
         Methods
 Authors@R: c(person("Peter","Carbonetto",role=c("aut","cre"),
                     email="peter.carbonetto@gmail.com"),
              person("Matthew","Stephens",role="aut"),
-             person("David","Gerard",role="aut"))
+             person("David","Gerard",role="ctb"))
+Maintainer: Peter Carbonetto <peter.carbonetto@gmail.com>
 Description: Fast algorithms for fitting Bayesian variable selection
     models and computing Bayes factors, in which the outcome (or
     response variable) is modeled using a linear regression or a
@@ -19,8 +20,9 @@ Description: Fast algorithms for fitting Bayesian variable selection
     <DOI:10.1214/12-BA703>). This software has been applied to large
     data sets with over a million variables and thousands of samples.
 Depends: R (>= 3.1.0)
-Imports: methods, Matrix, stats, graphics, lattice, latticeExtra, Rcpp
-Suggests: glmnet, qtl, knitr, rmarkdown, testthat
+Imports: methods, Matrix, stats, graphics, lattice, latticeExtra, Rcpp,
+        nor1mix
+Suggests: curl, glmnet, qtl, knitr, rmarkdown, testthat
 License: GPL (>= 3)
 NeedsCompilation: yes
 LazyData: true
@@ -28,10 +30,9 @@ URL: http://github.com/pcarbo/varbvs
 BugReports: http://github.com/pcarbo/varbvs/issues
 LinkingTo: Rcpp
 VignetteBuilder: knitr
-Packaged: 2017-09-08 14:22:13 UTC; pcarbo
+Packaged: 2019-03-07 20:31:05 UTC; pcarbo
 Author: Peter Carbonetto [aut, cre],
   Matthew Stephens [aut],
-  David Gerard [aut]
-Maintainer: Peter Carbonetto <peter.carbonetto@gmail.com>
+  David Gerard [ctb]
 Repository: CRAN
-Date/Publication: 2017-09-08 15:02:59 UTC
+Date/Publication: 2019-03-07 21:10:03 UTC

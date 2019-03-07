@@ -124,7 +124,7 @@ r <- system.time(fit.varbvs <- varbvs(X,NULL,y,"binomial",verbose = FALSE))
 cat(sprintf("Model fitting took %0.2f seconds.\n",r["elapsed"]))
 
 ## ---- results = "hold"---------------------------------------------------
-y.varbvs <- predict(fit.varbvs,X)
+y.varbvs <- predict(fit.varbvs,X,type = "class")
 print(table(true = factor(y),pred = factor(y.varbvs)))
 
 ## ------------------------------------------------------------------------

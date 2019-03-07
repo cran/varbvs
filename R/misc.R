@@ -1,6 +1,6 @@
 # Part of the varbvs package, https://github.com/pcarbo/varbvs
 #
-# Copyright (C) 2012-2017, Peter Carbonetto
+# Copyright (C) 2012-2018, Peter Carbonetto
 #
 # This program is free software: you can redistribute it under the
 # terms of the GNU General Public License; either version 3 of the
@@ -22,7 +22,7 @@
 #   var1.cols(X)
 #   dot(x,y)
 #   norm2(x)
-#   qnorm(x,a)
+#   quadnorm(x,a)
 #   rep.col(x,n)
 #   rep.row(x,n)
 #   rand(m,n)
@@ -39,7 +39,10 @@
 #   int.gamma(logodds,alpha)
 #   int.klbeta(alpha,mu,s,sa)
 #   betavar(p,mu,s)
+#   credintnorm(x,mu,s)
+#   credintmix(x,w,mu,s)
 #   normalizelogweights(logw)
+#   resid.dev.logistic(y,p)
 #   cred(x,x0,w,c)
 #
 # Shorthand for machine precision.
@@ -82,7 +85,7 @@ norm2 <- function (x)
 # function returns the norm of x with respect to A = diag(a). For a
 # definition of the quadratic norm, see p. 635 of Convex Optimization
 # (2004) by Boyd & Vandenberghe.
-qnorm <- function (x, a) {
+quadnorm <- function (x, a) {
   x <- c(x)
   if (is.matrix(a))
     y <- sqrt(c(x %*% a %*% x))
@@ -192,8 +195,7 @@ remove.covariate.effects <- function (X, Z, y) {
   SZy <- as.vector(solve(A,c(y %*% Z)))
   SZX <- as.matrix(solve(A,t(Z) %*% X))
   if (ncol(Z) == 1) {
-    n <- nrow(X)
-    X <- X - rep.row(colMeans(X),n)
+    X <- scale(X,center = TRUE,scale = FALSE)
     y <- y - mean(y)
   } else {
 
@@ -285,6 +287,21 @@ betavar <- function (p, mu, s)
   p*(s + (1 - p)*mu^2)
 
 # ----------------------------------------------------------------------
+# Return the x% credible interval (or "confidence interval") for a
+# normal distribution with mean mu and variance s (note: *not*
+# standard deviation). Also note that x, mu and s must be scalars.
+credintnorm <- function (x, mu, s)
+  qnorm(c(0.5 - x/2,0.5 + x/2),mu,sqrt(s))
+
+# ----------------------------------------------------------------------
+# Return the x% credible interval (or "confidence interval") for a
+# mixture of normals with means mu, variances s and mixture weights w.
+credintmix <- function (x, w, mu, s) {
+  mix <- norMix(mu = mu,sigma = sqrt(s),w = w,name = "mix")
+  return(qnorMix(c(0.5 - x/2,0.5 + x/2),mix,method = "root2"))
+}
+
+# ----------------------------------------------------------------------
 # normalizelogweights takes as input an array of unnormalized
 # log-probabilities logw and returns normalized probabilities such
 # that the sum is equal to 1.
@@ -297,6 +314,22 @@ normalizelogweights <- function (logw) {
 
   # Normalize the probabilities.
   return(w/sum(w))
+}
+
+# ----------------------------------------------------------------------
+# Compute the deviance residuals for a logistic regression
+# model. Argument y is the vector or array of ground-truth binary
+# outcomes, and p is the model response; that is, the predicted
+# probability that the outcome is equal to 1. See
+# http://data.princeton.edu/wws509/notes/c3s8.html for the
+# mathematical formula for the deviance residuals.
+resid.dev.logistic <- function (y, p) {
+  i      <- which(y == 0)
+  j      <- which(y == 1)
+  out    <- p
+  out[i] <- log(1 - p[i])
+  out[j] <- log(p[j])
+  return(sign(y - p) * sqrt(-2*out))
 }
 
 # ----------------------------------------------------------------------
@@ -355,3 +388,4 @@ cred <- function  (x, x0, w = NULL, cred.int = 0.95) {
   i <- which.min(x[b] - x[a])
   return(list(a = x[a[i]],b = x[b[i]]))
 }
+

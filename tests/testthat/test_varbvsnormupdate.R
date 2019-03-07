@@ -1,6 +1,6 @@
 # Part of the varbvs package, https://github.com/pcarbo/varbvs
 #
-# Copyright (C) 2012-2017, Peter Carbonetto
+# Copyright (C) 2012-2018, Peter Carbonetto
 #
 # This program is free software: you can redistribute it under the
 # terms of the GNU General Public License; either version 3 of the
@@ -24,6 +24,7 @@ test_that("all versions of varbvsnormupdate produce the same result",{
   logodds <- -2    # Prior log-odds of inclusion.
 
   # Set the random number generator seed.
+  suppressWarnings(RNGversion("3.5.0"))
   set.seed(1)
 
   # GENERATE DATA SET
@@ -71,16 +72,19 @@ test_that("all versions of varbvsnormupdate produce the same result",{
   
   # Set up the inputs to varbvsnormupdate.
   xy      <- c(y %*% X)
-  d       <- diagsq(X)
+  d       <- varbvs:::diagsq(X)
   Xr0     <- c(X %*% (alpha0*mu0))
   logodds <- rep(log(10)*logodds,p)
 
-  r <- cbind(system.time(out1 <- varbvsnormupdate(X,se,sb,logodds,xy,d,
-                                                  alpha0,mu0,Xr0,1:p,"R")),
-             system.time(out2 <- varbvsnormupdate(X,se,sb,logodds,xy,d,
-                                                  alpha0,mu0,Xr0,1:p,".Call")),
-             system.time(out3 <- varbvsnormupdate(X,se,sb,logodds,xy,d,
-                                                  alpha0,mu0,Xr0,1:p,"Rcpp")))
+  r <- cbind(system.time(out1 <-
+               varbvs:::varbvsnormupdate(X,se,sb,logodds,xy,d,
+                                        alpha0,mu0,Xr0,1:p,"R")),
+             system.time(out2 <-
+               varbvs:::varbvsnormupdate(X,se,sb,logodds,xy,d,
+                                         alpha0,mu0,Xr0,1:p,".Call")),
+             system.time(out3 <-
+               varbvs:::varbvsnormupdate(X,se,sb,logodds,xy,d,
+                                         alpha0,mu0,Xr0,1:p,"Rcpp")))
   r        <- as.data.frame(r)
   names(r) <- c("R",".Call","Rcpp")
   print(r["elapsed",])

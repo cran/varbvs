@@ -1,6 +1,6 @@
 # Part of the varbvs package, https://github.com/pcarbo/varbvs
 #
-# Copyright (C) 2012-2017, Peter Carbonetto
+# Copyright (C) 2012-2018, Peter Carbonetto
 #
 # This program is free software: you can redistribute it under the
 # terms of the GNU General Public License; either version 3 of the
@@ -13,12 +13,24 @@
 #
 # Generate a four-part summary of the fitted Bayesian variable
 # selection model.
-summary.varbvs <- function (object, cred.int = 0.95, nv = 5, nr = 1000, ...) {
+summary.varbvs <- function (object, cred.int = 0.95, nv, pip.cutoff, ...) {
 
   # Check that the first input is an instance of class "varbvs".
   if (!is(object,"varbvs"))
     stop("Input argument object must be an instance of class \"varbvs\".")
 
+  # Determine the number of variables for which to show detailed
+  # summaries.
+  if (missing(nv) & missing(pip.cutoff))
+    nv <- 5
+  else if (!missing(nv) & !missing(pip.cutoff))
+    stop("Input arguments \"nv\" and \"pip.cutoff\" cannot both be specified")
+  else if (!missing(pip.cutoff)) {
+    if (pip.cutoff < 0 | pip.cutoff > 1)
+      stop("Argument \"pip.cutoff\" should be a number between 0 and 1")
+    nv <- sum(object$pip >= pip.cutoff)
+  }
+  
   # Get the normalized importance weights.
   w <- object$w
   
@@ -27,14 +39,16 @@ summary.varbvs <- function (object, cred.int = 0.95, nv = 5, nr = 1000, ...) {
   p  <- nrow(object$alpha)
   ns <- length(w)
 
-  # Input nv cannot be greater than the number of variables.
-  nv <- min(nv,p) 
+  # Input nv must be at least 1, and cannot be greater than the number
+  # of variables.
+  nv <- max(1,nv)
+  nv <- min(p,nv) 
   
   # Generate the summary.
   out <-
     list(family       = object$family,
          cred.int     = cred.int,
-         n            = object$n,
+         n            = nobs(object),
          p            = p,
          ns           = ns,
          ncov         = nrow(object$mu.cov),
@@ -47,9 +61,15 @@ summary.varbvs <- function (object, cred.int = 0.95, nv = 5, nr = 1000, ...) {
          sigma        = list(x = NA,x0 = NA,a = NA,b = NA),
          sa           = list(x = NA,x0 = NA,a = NA,b = NA),
          logodds      = list(x = NA,x0 = NA,a = NA,b = NA),
-         model.pve    = list(x0 = mean(object$model.pve),
-           a = quantile(object$model.pve,0.5 - cred.int/2,na.rm = TRUE),
-           b = quantile(object$model.pve,0.5 + cred.int/2,na.rm = TRUE)))
+         model.pve    = NULL)
+
+  # Summarize the proportion of variance explained (PVE) by the fitted
+  # model.
+  if (!is.null(object$model.pve))
+    out$model.pve =
+      list(x0 = mean(object$model.pve),
+           a  = quantile(object$model.pve,0.5 - cred.int/2,na.rm = TRUE),
+           b  = quantile(object$model.pve,0.5 + cred.int/2,na.rm = TRUE))
 
   # Summarize the candidate hyperparameter settings, when provided.
   if (!object$update.sigma)
@@ -103,17 +123,19 @@ summary.varbvs <- function (object, cred.int = 0.95, nv = 5, nr = 1000, ...) {
   # Get more detailed statistics about the top nv variables by the
   # probability that they are included.
   vars <- order(object$pip,decreasing = TRUE)[1:nv]
+  CIs  <- confint(object,vars,cred.int)
+  CIs  <- do.call(rbind,lapply(CIs,function (x) x[ns + 1,]))
   out$top.vars <-
     data.frame(index = vars,variable = rownames(object$alpha)[vars],
                prob = object$pip[vars],PVE = NA,coef = object$beta[vars],
-               cred = NA)
+               cred = NA,stringsAsFactors = FALSE)
   for (i in 1:length(vars)) {
-    if (object$family == "gaussian")
+    if (!is.null(object$pve))
       out$top.vars[i,"PVE"] <- dot(w,object$pve[vars[i],])
-    out$top.vars[i,"cred"] <- with(varbvscoefcred(object,vars[i],cred.int,nr),
-                                   sprintf("[%+0.3f,%+0.3f]",a,b))
+    out$top.vars[i,"cred"] <- sprintf("[%+0.3f,%+0.3f]",CIs[i,1],CIs[i,2])
   }
-  names(out$top.vars)[6] <- sprintf("Pr(coef.>%0.2f)",cred.int)
+  colnames(out$top.vars)[6] <- sprintf("Pr(coef.>%0.2f)",cred.int)
+  rownames(out$top.vars)    <- NULL
   
   class(out) <- c("summary.varbvs","list")
   return(out)
@@ -143,7 +165,7 @@ print.summary.varbvs <- function (x, digits = 3, ...) {
     else if (family == "binomial")
       cat(sprintf("fit approx. factors (eta):    %s\n",tf2yn(optimize.eta)))
     cat(sprintf("maximum log-likelihood lower bound: %0.4f\n",max(logw)))
-    if (family == "gaussian") {
+    if (!is.null(model.pve)) {
       with(model.pve,{
         cat("proportion of variance explained: ")
         cat(sprintf("%0.3f [%0.3f,%0.3f]\n",x0,a,b))
@@ -178,10 +200,12 @@ print.summary.varbvs <- function (x, digits = 3, ...) {
       # Summarize the fitted prior log-odds of inclusion (logodds).
       if (prior.same)
         with(logodds,
-             cat(sprintf("logodds %+8.2f %-19s (%+0.2f)--(%+0.2f)\n",x0,
+             cat(sprintf("logodds*%+8.2f %-19s (%+0.2f)--(%+0.2f)\n",x0,
                          sprintf("[%+0.2f,%+0.2f]",a,b),min(x),max(x))))
     }
-
+    cat("*See help(varbvs) for details on how to convert between the\n")
+    cat("prior log-odds and the prior inclusion probability.\n")
+    
     # SUMMARIZE VARIABLE SELECTION RESULTS
     # ------------------------------------
     # Summarize the number of variables selected at different PIP thresholds.
@@ -201,3 +225,8 @@ print.summary.varbvs <- function (x, digits = 3, ...) {
   
   return(invisible(x))
 }
+
+# ----------------------------------------------------------------------
+# Display summary of pcaviz object.
+print.varbvs <- function (x, digits = 3, ...)
+  print(summary(x),digits,...)
