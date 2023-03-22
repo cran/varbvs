@@ -1,8 +1,8 @@
 Package: varbvs
 Encoding: UTF-8
 Type: Package
-Version: 2.5-16
-Date: 2019-03-07
+Version: 2.6-8
+Date: 2023-03-22
 Title: Large-Scale Bayesian Variable Selection Using Variational
         Methods
 Authors@R: c(person("Peter","Carbonetto",role=c("aut","cre"),
@@ -26,13 +26,13 @@ Suggests: curl, glmnet, qtl, knitr, rmarkdown, testthat
 License: GPL (>= 3)
 NeedsCompilation: yes
 LazyData: true
-URL: http://github.com/pcarbo/varbvs
-BugReports: http://github.com/pcarbo/varbvs/issues
+URL: https://github.com/pcarbo/varbvs
+BugReports: https://github.com/pcarbo/varbvs/issues
 LinkingTo: Rcpp
 VignetteBuilder: knitr
-Packaged: 2019-03-07 20:31:05 UTC; pcarbo
+Packaged: 2023-03-22 18:34:10 UTC; pcarbo
 Author: Peter Carbonetto [aut, cre],
   Matthew Stephens [aut],
   David Gerard [ctb]
 Repository: CRAN
-Date/Publication: 2019-03-07 21:10:03 UTC
+Date/Publication: 2023-03-22 19:40:02 UTC

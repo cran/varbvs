@@ -1,26 +1,26 @@
-## ---- echo = FALSE, message = FALSE--------------------------------------
+## ---- echo = FALSE, message = FALSE-------------------------------------------
 knitr::opts_chunk$set(collapse = TRUE,comment = "#",fig.width = 6.9,
                       fig.height = 5.5,fig.align = "center",
                       fig.cap = "&nbsp;",dpi = 120)
 
-## ---- message = FALSE----------------------------------------------------
+## ---- message = FALSE---------------------------------------------------------
 library(lattice)
 library(latticeExtra)
 library(glmnet)
 library(varbvs)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 nfolds <- 20                    # Number of cross-validation folds.
 alpha  <- 0.95                  # Elastic net mixing parameter.
 lambda <- 10^(seq(0,-2,-0.05))  # Lambda sequence.
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 data(leukemia)
 X <- leukemia$x
 y <- leukemia$y
 set.seed(1)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # This is the model fitting step.
 r <- system.time(fit.glmnet <-
        glmnet(X,y,family = "binomial",lambda = lambda,alpha = alpha))
@@ -37,12 +37,12 @@ cat(sprintf("Cross-validation took %0.2f seconds.\n",r["elapsed"]))
 # of the smallest misclassification error.
 lambda.opt <- out.cv.glmnet$lambda.1se
 
-## ---- results = "hold"---------------------------------------------------
+## ---- results = "hold"--------------------------------------------------------
 cat("classification results with lambda = ",lambda.opt,":\n",sep="")
 y.glmnet <- c(predict(fit.glmnet,X,s = lambda.opt,type = "class"))
 print(table(true = factor(y),pred = factor(y.glmnet)))
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 trellis.par.set(par.xlab.text = list(cex = 0.85),
                 par.ylab.text = list(cex = 0.85),
                 axis.text     = list(cex = 0.75))
@@ -119,15 +119,15 @@ print(with(out.cv.glmnet,
                            pch = 20,cex = 0.6,col = "blue"))),
       split = c(1,2,2,2),more = FALSE)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 r <- system.time(fit.varbvs <- varbvs(X,NULL,y,"binomial",verbose = FALSE))
 cat(sprintf("Model fitting took %0.2f seconds.\n",r["elapsed"]))
 
-## ---- results = "hold"---------------------------------------------------
+## ---- results = "hold"--------------------------------------------------------
 y.varbvs <- predict(fit.varbvs,X,type = "class")
 print(table(true = factor(y),pred = factor(y.varbvs)))
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 trellis.par.set(par.xlab.text = list(cex = 0.85),
                 par.ylab.text = list(cex = 0.85),
                 axis.text     = list(cex = 0.75))
@@ -177,6 +177,6 @@ print(xyplot(y ~ x,data.frame(x = log10q,y = w),type = "l",col = "blue",
                       col = "blue",pch = 20,cex = 0.65)),
       split = c(2,1,2,1),more = FALSE)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 sessionInfo()
 

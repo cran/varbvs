@@ -95,12 +95,7 @@ varbvsnorm <- function (X, y, sigma, sa, logodds, alpha, mu, update.order,
 
     # (2b) UPDATE VARIATIONAL APPROXIMATION
     # -------------------------------------
-    # Run a forward or backward pass of the coordinate ascent updates.
-    if (iter %% 2)
-      i <- update.order
-    else
-      i <- rev(update.order)
-    out   <- varbvsnormupdate(X,sigma,sa,logodds,xy,d,alpha,mu,Xr,i)
+    out   <- varbvsnormupdate(X,sigma,sa,logodds,xy,d,alpha,mu,Xr,update.order)
     alpha <- out$alpha
     mu    <- out$mu
     Xr    <- out$Xr
@@ -121,7 +116,15 @@ varbvsnorm <- function (X, y, sigma, sa, logodds, alpha, mu, update.order,
     if (update.sigma) {
       sigma <- (norm2(y - Xr)^2 + dot(d,betavar(alpha,mu,s)) +
                 dot(alpha,(s + mu^2)/sa))/(n + sum(alpha))
-      s     <- sa*sigma/(sa*d + 1)
+
+      # Simpler update formula from Youngseok:
+      # w <- mean(alpha)
+      # b <- alpha * mu
+      # r <- drop(y - Xr)
+      # bt <- (b + drop(r %*% X))/d
+      # sigma_new <- (norm2(r)^2 + sum(d*b*(bt - b)) + sigma*p*w)/(n + p*w)
+
+      s <- sa*sigma/(sa*d + 1)
     }
     
     # (2e) UPDATE PRIOR VARIANCE OF REGRESSION COEFFICIENTS

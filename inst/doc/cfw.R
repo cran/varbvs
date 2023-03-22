@@ -1,39 +1,39 @@
-## ---- echo = FALSE, message = FALSE--------------------------------------
+## ---- echo = FALSE, message = FALSE-------------------------------------------
 knitr::opts_chunk$set(eval = FALSE,collapse = TRUE,comment = "#")
 
-## ---- eval = TRUE, message = FALSE---------------------------------------
+## ---- eval = TRUE, message = FALSE--------------------------------------------
 library(curl)
 library(lattice)
 library(varbvs)
 
-## ---- eval = TRUE--------------------------------------------------------
+## ---- eval = TRUE-------------------------------------------------------------
 trait      <- "testis"
 covariates <- "sacwt"
 logodds    <- seq(-5,-3,0.25)
 sa         <- 0.05
 
-## ---- eval = TRUE--------------------------------------------------------
+## ---- eval = TRUE-------------------------------------------------------------
 set.seed(1)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 #  load(curl("https://zenodo.org/record/546142/files/cfw.RData"))
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 #  rows <- which(apply(pheno[,c(trait,covariates)],1,
 #                      function (x) sum(is.na(x)) == 0))
 #  pheno <- pheno[rows,]
 #  geno  <- geno[rows,]
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 #  runtime <- system.time(fit <-
 #    varbvs(geno,as.matrix(pheno[,covariates]),pheno[,trait],
 #           sa = sa,logodds = logodds,verbose = FALSE))
 #  cat(sprintf("Model fitting took %0.2f minutes.\n",runtime["elapsed"]/60))
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 #  print(summary(fit))
 
-## ---- fig.width = 7,fig.height = 5.5, fig.align = "center"---------------
+## ---- fig.width = 7,fig.height = 5.5, fig.align = "center"--------------------
 #  trellis.par.set(axis.text     = list(cex = 0.7),
 #                  par.ylab.text = list(cex = 0.7),
 #                  par.main.text = list(cex = 0.7,font = 1))
@@ -66,6 +66,6 @@ set.seed(1)
 #               xlab = "",ylab = "probability",main = "c. multi-marker (BVSR)"),
 #        split = c(1,3,1,3),more = FALSE)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 #  sessionInfo()
 
