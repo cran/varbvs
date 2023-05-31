@@ -11,7 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
 
-<meta name="date" content="2023-03-22" />
+<meta name="date" content="2023-05-31" />
 
 <title>Comparison of glmnet and varbvs in Leukemia data set</title>
 
@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', function(e) {
   div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
   ul.task-list{list-style: none;}
     </style>
+
 
 
 <style type="text/css">
@@ -120,13 +121,20 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   for (var i = 0; i < sheets.length; i++) {
     if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
     try { var rules = sheets[i].cssRules; } catch (e) { continue; }
-    for (var j = 0; j < rules.length; j++) {
+    var j = 0;
+    while (j < rules.length) {
       var rule = rules[j];
       // check if there is a div.sourceCode rule
-      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
       var style = rule.style.cssText;
       // check if color or background-color is set
-      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
       // replace div.sourceCode by a pre.sourceCode rule
       sheets[i].deleteRule(j);
       sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
@@ -332,7 +340,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">Comparison of glmnet and varbvs in Leukemia
 data set</h1>
-<h4 class="date">2023-03-22</h4>
+<h4 class="date">2023-05-31</h4>
 
 
 
@@ -375,7 +383,7 @@ standard error of the minimum classification error.</p>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">system.time</span>(fit.glmnet <span class="ot">&lt;-</span></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>       <span class="fu">glmnet</span>(X,y,<span class="at">family =</span> <span class="st">&quot;binomial&quot;</span>,<span class="at">lambda =</span> lambda,<span class="at">alpha =</span> alpha))</span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">&quot;Model fitting took %0.2f seconds.</span><span class="sc">\n</span><span class="st">&quot;</span>,r[<span class="st">&quot;elapsed&quot;</span>]))</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Model fitting took 0.02 seconds.</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Model fitting took 0.03 seconds.</span></span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co"># This is the cross-validation step.</span></span>
 <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">system.time</span>(out.cv.glmnet <span class="ot">&lt;-</span></span>
@@ -383,7 +391,7 @@ standard error of the minimum classification error.</p>
 <span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>                 <span class="at">alpha =</span> alpha,<span class="at">nfolds =</span> nfolds,<span class="at">lambda =</span> lambda))</span>
 <span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>lambda <span class="ot">&lt;-</span> out.cv.glmnet<span class="sc">$</span>lambda</span>
 <span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">&quot;Cross-validation took %0.2f seconds.</span><span class="sc">\n</span><span class="st">&quot;</span>,r[<span class="st">&quot;elapsed&quot;</span>]))</span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Cross-validation took 0.39 seconds.</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Cross-validation took 0.59 seconds.</span></span>
 <span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Choose the largest value of lambda that is within 1 standard error</span></span>
 <span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="co"># of the smallest misclassification error.</span></span>
@@ -502,7 +510,7 @@ binary outcome (the type of leukemia), with spike-and-slab priors on the
 coefficients.</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">system.time</span>(fit.varbvs <span class="ot">&lt;-</span> <span class="fu">varbvs</span>(X,<span class="cn">NULL</span>,y,<span class="st">&quot;binomial&quot;</span>,<span class="at">verbose =</span> <span class="cn">FALSE</span>))</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">&quot;Model fitting took %0.2f seconds.</span><span class="sc">\n</span><span class="st">&quot;</span>,r[<span class="st">&quot;elapsed&quot;</span>]))</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Model fitting took 3.00 seconds.</span></span></code></pre></div>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Model fitting took 2.84 seconds.</span></span></code></pre></div>
 </div>
 <div id="evaluate-the-varbvs-predictions" class="section level2">
 <h2>Evaluate the varbvs predictions</h2>
@@ -612,17 +620,17 @@ these results.</p>
 <span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
 <span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a><span class="co"># other attached packages:</span></span>
-<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] glmnet_4.1-6        Matrix_1.2-18       latticeExtra_0.6-29</span></span>
-<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a><span class="co"># [4] curl_4.3            varbvs_2.6-8        lattice_0.20-38    </span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a><span class="co"># [1] glmnet_4.1-6        Matrix_1.3-4        latticeExtra_0.6-29</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a><span class="co"># [4] curl_4.3            varbvs_2.6-10       lattice_0.20-38    </span></span>
 <span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
 <span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a><span class="co"># loaded via a namespace (and not attached):</span></span>
 <span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a><span class="co">#  [1] Rcpp_1.0.8         highr_0.8          bslib_0.3.1        compiler_3.6.2    </span></span>
 <span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a><span class="co">#  [5] RColorBrewer_1.1-2 jquerylib_0.1.4    iterators_1.0.12   tools_3.6.2       </span></span>
 <span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a><span class="co">#  [9] digest_0.6.23      jsonlite_1.7.2     evaluate_0.14      png_0.1-7         </span></span>
 <span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a><span class="co"># [13] rlang_1.0.6        foreach_1.4.7      cli_3.5.0          yaml_2.2.0        </span></span>
-<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a><span class="co"># [17] xfun_0.29          fastmap_1.1.0      stringr_1.4.0      knitr_1.37        </span></span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a><span class="co"># [17] xfun_0.39.1        fastmap_1.1.0      stringr_1.4.0      knitr_1.37        </span></span>
 <span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a><span class="co"># [21] sass_0.4.0         grid_3.6.2         R6_2.4.1           jpeg_0.1-8.1      </span></span>
-<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a><span class="co"># [25] survival_3.1-8     rmarkdown_2.11     magrittr_2.0.1     codetools_0.2-16  </span></span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a><span class="co"># [25] survival_3.1-8     rmarkdown_2.21     magrittr_2.0.1     codetools_0.2-16  </span></span>
 <span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a><span class="co"># [29] htmltools_0.5.4    splines_3.6.2      shape_1.4.4        nor1mix_1.3-0     </span></span>
 <span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a><span class="co"># [33] stringi_1.4.3</span></span></code></pre></div>
 </div>

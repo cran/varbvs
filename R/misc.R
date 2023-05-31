@@ -24,8 +24,8 @@
 #   dot(x,y)
 #   norm2(x)
 #   quadnorm(x,a)
-#   rep.col(x,n)
-#   rep.row(x,n)
+#   rep_col(x,n)
+#   rep_row(x,n)
 #   rand(m,n)
 #   randn(m,n)
 #   diagsq(X,a)
@@ -103,12 +103,12 @@ quadnorm <- function (x, a) {
 
 # ----------------------------------------------------------------------
 # Replicate vector x to create an m x n matrix, where m = length(x).
-rep.col <- function (x, n)
+rep_col <- function (x, n)
   matrix(x,length(x),n,byrow = FALSE)
 
 # ----------------------------------------------------------------------
 # Replicate vector x to create an n x m matrix, where m = length(x).
-rep.row <- function (x, n)
+rep_row <- function (x, n)
   matrix(x,n,length(x),byrow = TRUE)
 
 # ----------------------------------------------------------------------
@@ -198,7 +198,9 @@ remove.covariate.effects <- function (X, Z, y) {
   # effects of the covariates (Z) on X and y, and later on to
   # efficiently compute estimates of the regression coefficients for
   # the covariates.
-  A   <- forceSymmetric(crossprod(Z))
+  n   <- ncol(Z)
+  e   <- sqrt(.Machine$double.eps)
+  A   <- forceSymmetric(crossprod(Z) + e*diag(n))
   SZy <- as.vector(solve(A,c(y %*% Z)))
   SZX <- as.matrix(solve(A,t(Z) %*% X))
   if (ncol(Z) == 1) {

@@ -150,7 +150,7 @@ varbvsmix <- function (X, Z, y, sa, sigma, w, alpha, mu, update.sigma,
   # matrix.
   if (missing(alpha)) {
     alpha <- rand(p,K) + K*drop.threshold
-    alpha <- alpha / rep.col(rowSums(alpha),K)
+    alpha <- alpha / rep_col(rowSums(alpha),K)
   }
   if (nrow(alpha) != p)
     stop("Input alpha should have as many rows as X has columns")

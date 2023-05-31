@@ -116,7 +116,7 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
   if (length(sa) == 1)
     sa <- rep(sa,ns)
   if (ncol(logodds) == 1)
-    logodds <- rep.col(logodds,ns)
+    logodds <- rep_col(logodds,ns)
   if (length(sigma) != ns | length(sa) != ns | ncol(logodds) != ns)
     stop("options.sigma, options.sa and options.logodds are inconsistent")
 
@@ -159,7 +159,7 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
   initialize.params.default <- TRUE
   if (missing(alpha)) {
     alpha <- rand(p,ns)
-    alpha <- alpha / rep.row(colSums(alpha),p)
+    alpha <- alpha / rep_row(colSums(alpha),p)
   } else
     initialize.params.default <- FALSE
   if (!is.matrix(alpha))
@@ -167,7 +167,7 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
   if (nrow(alpha) != p)
     stop("Input alpha must have as many rows as X has columns")
   if (ncol(alpha) == 1)
-    alpha <- rep.col(alpha,ns)
+    alpha <- rep_col(alpha,ns)
 
   # Set initial estimates of variational parameter mu.
   if (missing(mu))
@@ -179,7 +179,7 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
   if (nrow(mu) != p)
     stop("Input mu must have as many rows as X has columns")
   if (ncol(mu) == 1)
-    mu <- rep.col(mu,ns)
+    mu <- rep_col(mu,ns)
 
   # Determine whether to find a good initialization for the
   # variational parameters.
@@ -202,7 +202,7 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
   if (nrow(eta) != n)
     stop("Input eta must have as many rows as X")
   if (ncol(eta) == 1)
-    eta <- rep.col(eta,ns)
+    eta <- rep_col(eta,ns)
 
   # Determine whether to update the variational parameter eta. Note this
   # option is only relevant for logistic regression.
@@ -220,7 +220,7 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
   if (verbose) {
     cat("Welcome to           ")
     cat("--       *                              *               \n")
-    cat("VARBVS version 2.6-8 ")
+    cat("VARBVS version 2.6-10")
     cat("--       |              |               |               \n")
     cat("large-scale Bayesian ")
     cat("--       ||           | |    |          || |     |   |  \n")
@@ -375,10 +375,10 @@ varbvs <- function (X, Z, y, family = c("gaussian","binomial"), sigma, sa,
       # hyperparameters with the highest variational estimate of the
       # marginal likelihood.
       i     <- which.max(logw)
-      alpha <- rep.col(alpha[,i],ns)
-      mu    <- rep.col(mu[,i],ns)
+      alpha <- rep_col(alpha[,i],ns)
+      mu    <- rep_col(mu[,i],ns)
       if (optimize.eta)
-        eta <- rep.col(eta[,i],ns)
+        eta <- rep_col(eta[,i],ns)
       if (update.sigma)
         sigma <- rep(sigma[i],ns)
       if (update.sa)
